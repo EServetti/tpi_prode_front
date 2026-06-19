@@ -69,6 +69,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* esconder flechas en input de tipo number */
+/* Chrome, Safari, Edge, and Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 h1,
 h2,
 h3,

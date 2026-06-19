@@ -18,14 +18,14 @@ onMounted(async () => {
       {{ APP_NAME }}
     </router-link>
 
-    <nav class="flex items-center gap-6">
+    <!-- <nav class="flex items-center gap-6">
       <router-link to="/mis-prodes" class="!text-text hover:!text-primary">
         Mis prodes
       </router-link>
       <router-link to="/mis-predicciones" class="!text-text hover:!text-primary">
         Mis predicciones
       </router-link>
-    </nav>
+    </nav> -->
 
     <UserDropdown />
   </header>

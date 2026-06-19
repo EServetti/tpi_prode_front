@@ -8,8 +8,8 @@ import AppHeader from './AppHeader.vue'
 
 <template>
   <div class="min-h-screen flex flex-col bg-bg">
-    <AppHeader />
-    <main class="flex-1">
+    <AppHeader class="sticky top-0 z-30" />
+    <main class="flex-1 flex flex-col">
       <slot />
     </main>
   </div>

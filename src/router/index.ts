@@ -24,11 +24,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/DashboardView.vue'),
     meta: { requiresAuth: true },
   },
+    {
+    path: '/group/:id',
+    name: 'group',
+    component: () => import('../views/GroupView.vue'),
+    meta: { requiresAuth: true }
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
-  },
+  }
 ]
 
 export const router = createRouter({
