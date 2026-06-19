@@ -41,3 +41,8 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !isAuthenticated) return { name: 'login' }
   if (to.meta.guestOnly && isAuthenticated) return { name: 'dashboard' }
 })
+
+router.afterEach(async () => {
+  const { HSStaticMethods } = await import('preline')
+  setTimeout(() => HSStaticMethods.autoInit(), 100)
+})

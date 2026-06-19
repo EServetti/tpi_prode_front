@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+@source "../node_modules/preline/dist/*.js";
+
+@custom-variant hs-overlay-open (&.open, &.open *, .open &);
+@custom-variant hs-dropdown-open (&.open, &.open *, .open &);
+@custom-variant hs-accordion-active (&.active, &.active *, .active &);
+@custom-variant hs-tab-active (&.active, &.active *, .active &);
 
 :root {
   --bg: #ffffff;
@@ -14,7 +20,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --bg: #0f172a;
     --surface: #1e293b;
     --border: #334155;
@@ -24,6 +30,17 @@
     --primary-hover: #60a5fa;
     --danger: #ef4444;
   }
+}
+
+:root.dark {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --danger: #ef4444;
 }
 
 @theme inline {

@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { VueQueryPlugin } from '@tanstack/vue-query'
+import 'preline'
 import App from './App.vue'
 import { router } from './router'
 import './style.css'

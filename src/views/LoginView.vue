@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '../hooks/useAuth'
+import { APP_NAME } from '../constants/app-data'
 
 const { login, loginStatus } = useAuth()
 const email = ref('')
@@ -15,7 +16,7 @@ const onSubmit = () => {
   <div class="w-full h-screen flex flex-row justify-center items-center overflow-y-hidden">
     <sectiion class="flex-2 h-full flex flex-col items-center justify-center bg-surface">
       <form class="w-[50%] h-full flex flex-col justify-center" @submit.prevent="onSubmit">
-        <h1 class="italic underline">Prode Pro</h1>
+        <h1 class="italic underline">{{ APP_NAME }}</h1>
         <h2 class="!mb-5">Iniciar sesión</h2>
         <input v-model="email" type="email" placeholder="Email" required />
         <input v-model="password" type="password" placeholder="Contraseña" required />

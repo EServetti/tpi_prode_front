@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '../hooks/useAuth'
+import { APP_NAME } from '../constants/app-data'
 
 const { register, registerStatus } = useAuth()
 const name = ref('')
@@ -16,7 +17,7 @@ const onSubmit = () => {
     <div class="w-full h-screen flex flex-row justify-center items-center overflow-y-hidden">
     <sectiion class="flex-2 h-full flex flex-col items-center justify-center bg-surface">
       <form class="w-[50%] h-full flex flex-col justify-center" @submit.prevent="onSubmit">
-        <h1 class="italic underline">Prode Pro</h1>
+        <h1 class="italic underline">{{ APP_NAME }}</h1>
         <h2 class="!mb-5">Registrarse</h2>
         <input v-model="name" type="text" placeholder="Nombre" required />
         <input v-model="email" type="email" placeholder="Email" required />
