@@ -1,13 +1,14 @@
-export const API_BASE_URL = 'https://mockapi.example.com/api'
+export const API_BASE_URL = '/api'
 
-export const MOCK_ENDPOINTS = {
-  login: `${API_BASE_URL}/auth/login`,
-  register: `${API_BASE_URL}/auth/register`,
-  me: `${API_BASE_URL}/auth/me`,
-  logout: `${API_BASE_URL}/auth/logout`,
-  matches: `${API_BASE_URL}/matches`,
-  predictions: `${API_BASE_URL}/predictions`,
-  ranking: `${API_BASE_URL}/ranking`,
+export const ENDPOINTS = {
+  auth: {
+    login: '/auth/login',
+    register: '/auth/register',
+    me: '/auth/me',
+  },
+  matches: '/matches',
+  predictions: '/predictions',
+  ranking: '/ranking',
 } as const
 
 export const STORAGE_KEYS = {

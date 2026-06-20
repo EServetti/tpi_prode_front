@@ -2,6 +2,9 @@
 import { onMounted, nextTick } from 'vue'
 import { APP_NAME } from '../constants/app-data'
 import UserDropdown from './UserDropdown.vue'
+import { sessionStorage } from '../utils/session.ts'
+
+const isAdmin = sessionStorage?.isAdmin()
 
 onMounted(async () => {
   await nextTick()
@@ -18,15 +21,11 @@ onMounted(async () => {
       {{ APP_NAME }}
     </router-link>
 
-    <!-- <nav class="flex items-center gap-6">
-      <router-link to="/mis-prodes" class="!text-text hover:!text-primary">
-        Mis prodes
+    <nav class="flex items-center gap-6">
+      <router-link v-if="isAdmin" to="/admin" class="!text-text hover:!text-primary">
+        Panel Administrador
       </router-link>
-      <router-link to="/mis-predicciones" class="!text-text hover:!text-primary">
-        Mis predicciones
-      </router-link>
-    </nav> -->
-
-    <UserDropdown />
+      <UserDropdown />
+    </nav>
   </header>
 </template>

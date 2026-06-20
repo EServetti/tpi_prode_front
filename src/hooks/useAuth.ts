@@ -2,30 +2,50 @@ import { useMutation, useQuery } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { authService } from '../services/auth.service'
 import { useAuthContext } from '../context/AuthContext'
-import type { LoginCredentials, RegisterPayload } from '../utils/types'
+import { sessionStorage } from '../utils/session'
+import type { LoginCredentials, RegisterPayload, User } from '../utils/types'
+
+const fetchSession = async (token: string): Promise<{ token: string; user: User }> => {
+  // El token debe estar en la cookie antes de llamar a /auth/me
+  // (el interceptor de axios lo agrega como Bearer en el header).
+  sessionStorage.setToken(token)
+  const user = await authService.me()
+  return { token, user }
+}
 
 export const useAuth = () => {
   const auth = useAuthContext()
   const router = useRouter()
 
   const loginMutation = useMutation({
-    mutationFn: (credentials: LoginCredentials) => authService.login(credentials),
+    mutationFn: async (credentials: LoginCredentials) => {
+      const { token } = await authService.login(credentials)
+      return fetchSession(token)
+    },
     onSuccess: ({ token, user }) => {
       auth.setSession(token, user)
       router.push('/dashboard')
+    },
+    onError: () => {
+      auth.clearSession()
     },
   })
 
   const registerMutation = useMutation({
-    mutationFn: (payload: RegisterPayload) => authService.register(payload),
+    mutationFn: async (payload: RegisterPayload) => {
+      const { token } = await authService.register(payload)
+      return fetchSession(token)
+    },
     onSuccess: ({ token, user }) => {
       auth.setSession(token, user)
       router.push('/dashboard')
     },
+    onError: () => {
+      auth.clearSession()
+    },
   })
 
-  const logout = async () => {
-    await authService.logout()
+  const logout = () => {
     auth.clearSession()
     router.push('/login')
   }

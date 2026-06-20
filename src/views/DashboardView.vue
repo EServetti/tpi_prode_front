@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import ProtectedView from '../components/ProtectedView.vue'
+import ProtectedLayout from '../components/ProtectedLayout.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { MOCK_PREDICTIONS } from '../constants/app-data'
 import PredictionCard from '../components/forms/PredictionCard.vue'
@@ -48,7 +48,7 @@ const onSelectGroup = (group: string | null) => {
 </script>
 
 <template>
-  <ProtectedView>
+  <ProtectedLayout>
     <div class="flex-1 flex flex-col lg:flex-row">
       <!-- sección mis pronósticos -->
       <section class="w-full lg:flex-3 flex flex-col">
@@ -308,5 +308,5 @@ const onSelectGroup = (group: string | null) => {
         </footer>
       </aside>
     </div>
-  </ProtectedView>
+  </ProtectedLayout>
 </template>

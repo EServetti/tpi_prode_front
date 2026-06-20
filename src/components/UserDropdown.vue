@@ -7,8 +7,8 @@ const { user, logout } = useAuth()
 const { isDark, toggle: toggleTheme } = useTheme()
 
 const initials = computed(() => {
-  if (!user.value?.name) return '?'
-  return user.value.name
+  if (!user.value?.nombreUsuario) return '?'
+  return user.value.nombreUsuario
     .split(' ')
     .map((part) => part[0])
     .slice(0, 2)
@@ -42,7 +42,7 @@ const onLogout = async () => {
     >
       <div class="px-3 py-2 border-b border-border-base mb-2">
         <p class="text-xs uppercase text-text-muted">Nombre</p>
-        <p class="text-text">{{ user?.name }}</p>
+        <p class="text-text">{{ user?.nombreUsuario }}</p>
         <p class="text-xs uppercase text-text-muted mt-1">Email</p>
         <p class="text-text text-sm">{{ user?.email }}</p>
       </div>

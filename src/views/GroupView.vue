@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import ProtectedView from '../components/ProtectedView.vue'
+import ProtectedLayout from '../components/ProtectedLayout.vue'
 import UserCard from '../components/UserCard.vue'
 import EmptyState from '../components/EmptyState.vue'
 import PredictionCard from '../components/forms/PredictionCard.vue'
@@ -51,7 +51,7 @@ const userPredictions = computed(() =>
 </script>
 
 <template>
-  <ProtectedView>
+  <ProtectedLayout>
     <section class="flex-1 flex flex-col">
       <header
         class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-border-base"
@@ -263,5 +263,5 @@ const userPredictions = computed(() =>
       :toggle-modal="toggleNewPredictionModal"
       :group="group"
     />
-  </ProtectedView>
+  </ProtectedLayout>
 </template>

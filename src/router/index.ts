@@ -24,11 +24,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/DashboardView.vue'),
     meta: { requiresAuth: true },
   },
-    {
+  {
     path: '/group/:id',
     name: 'group',
     component: () => import('../views/GroupView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('../views/AdminPanelView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -44,7 +50,9 @@ export const router = createRouter({
 
 router.beforeEach((to) => {
   const isAuthenticated = !!sessionStorage.getToken()
+  const isAdmin = sessionStorage.isAdmin()
   if (to.meta.requiresAuth && !isAuthenticated) return { name: 'login' }
+  if (to.meta.requiresAdmin && !isAdmin) return { name: 'dashboard' }
   if (to.meta.guestOnly && isAuthenticated) return { name: 'dashboard' }
 })
 

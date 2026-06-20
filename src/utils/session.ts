@@ -16,6 +16,16 @@ export const sessionStorage = {
     return raw ? (JSON.parse(raw) as User) : null
   },
 
+  isAdmin: (): boolean => {
+    const raw = Cookies.get(STORAGE_KEYS.user)
+    const user = raw ? (JSON.parse(raw) as User) : null
+    return user?.rol === "ADMIN"
+  },
+
+  setToken: (token: string): void => {
+    Cookies.set(STORAGE_KEYS.token, token, COOKIE_OPTIONS)
+  },
+
   setSession: (token: string, user: User): void => {
     Cookies.set(STORAGE_KEYS.token, token, COOKIE_OPTIONS)
     Cookies.set(STORAGE_KEYS.user, JSON.stringify(user), COOKIE_OPTIONS)

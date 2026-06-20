@@ -1,36 +1,31 @@
-import type { AuthResponse, LoginCredentials, RegisterPayload, User } from '../utils/types'
+import { api } from './api'
+import { ENDPOINTS } from '../constants/constants'
+import type { LoginCredentials, RegisterPayload, User } from '../utils/types'
 
-const mockUser: User = {
-  id: '1',
-  email: 'demo@prode.com',
-  name: 'Demo User',
+interface TokenResponse {
+  token: string
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 export const authService = {
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    await delay(500)
-    if (!credentials.email || !credentials.password) {
-      throw new Error('Credenciales inválidas')
-    }
-    return { token: 'mock-jwt-token', user: { ...mockUser, email: credentials.email } }
+  login: async (credentials: LoginCredentials): Promise<TokenResponse> => {
+    const { data } = await api.post<TokenResponse>(ENDPOINTS.auth.login, {
+      email: credentials.email,
+      password: credentials.password,
+    })
+    return data
   },
 
-  register: async (payload: RegisterPayload): Promise<AuthResponse> => {
-    await delay(500)
-    return {
-      token: 'mock-jwt-token',
-      user: { id: '1', email: payload.email, name: payload.name },
-    }
+  register: async (payload: RegisterPayload): Promise<TokenResponse> => {
+    const { data } = await api.post<TokenResponse>(ENDPOINTS.auth.register, {
+      email: payload.email,
+      password: payload.password,
+      nombreUsuario: payload.name,
+    })
+    return data
   },
 
   me: async (): Promise<User> => {
-    await delay(300)
-    return mockUser
-  },
-
-  logout: async (): Promise<void> => {
-    await delay(200)
+    const { data } = await api.get<User>(ENDPOINTS.auth.me)
+    return data
   },
 }
