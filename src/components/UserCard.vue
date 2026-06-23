@@ -5,9 +5,18 @@ import type { GroupUser } from '../utils/types'
 interface Props {
   user: GroupUser
   position: number
+  canKick?: boolean
+  isCreator?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  canKick: false,
+  isCreator: false,
+})
+
+const emit = defineEmits<{
+  (e: 'kick', user: GroupUser): void
+}>()
 
 const initials = computed(() =>
   props.user.nombre
@@ -53,10 +62,33 @@ const positionClass = computed(() => {
       </div>
     </div>
 
-    <!-- línea 2 (mobile): nombre + stats + puntos -->
+    <!-- línea 2 (mobile): nombre + stats + puntos + kick -->
     <div class="flex items-center gap-3 sm:contents">
       <div class="flex-1 min-w-0">
-        <p class="!text-text font-medium truncate">{{ user.nombre }}</p>
+        <p class="!text-text font-medium truncate flex items-center gap-2">
+          <span class="truncate">{{ user.nombre }}</span>
+          <span
+            v-if="isCreator"
+            class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 text-[10px] font-semibold uppercase tracking-wide"
+            title="Creador del grupo"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="size-3"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M2 18h20l-2-9-5 3-3-7-3 7-5-3-2 9z"
+              />
+            </svg>
+            Creador
+          </span>
+        </p>
         <p class="text-xs flex items-center gap-1.5">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -80,6 +112,29 @@ const positionClass = computed(() => {
         <p class="!text-text font-bold text-lg leading-none">{{ user.puntos }}</p>
         <p class="text-xs uppercase tracking-wide">pts</p>
       </div>
+
+      <button
+        v-if="canKick"
+        type="button"
+        class="!p-0 !bg-transparent !border-0 size-8 rounded-full text-text-muted hover:!text-danger hover:!bg-danger/10 flex items-center justify-center transition-colors shrink-0"
+        :aria-label="`Expulsar a ${user.nombre}`"
+        :title="`Expulsar a ${user.nombre}`"
+        @click="emit('kick', user)"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="size-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
     </div>
   </li>
 </template>

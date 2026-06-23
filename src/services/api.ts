@@ -21,14 +21,26 @@ const AUTH_PATHS = [ENDPOINTS.auth.login, ENDPOINTS.auth.register] as string[]
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const requestedPath = error.config?.url ?? ''
+
+    if (status === 401) {
       sessionStorage.clearSession()
-      const requestedPath = error.config?.url ?? ''
       const isAuthRequest = AUTH_PATHS.some((path) => requestedPath.includes(path))
       if (!isAuthRequest && router.currentRoute.value.name !== 'login') {
         router.replace({ name: 'login' })
       }
     }
+
+    // log explícito de errores del servidor para que no se pierdan en mensajes genéricos
+    if (status && status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[api] ${error.config?.method?.toUpperCase()} ${requestedPath} → ${status}`,
+        error.response?.data,
+      )
+    }
+
     return Promise.reject(error)
   },
 )

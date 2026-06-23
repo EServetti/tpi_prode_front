@@ -1,129 +1,135 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { Game, Group } from '../../utils/types'
+import { computed, ref, watch } from 'vue'
+import type { Game, UserGroup } from '../../utils/types'
 import PredictionCard from './PredictionCard.vue'
+import { usePartidos } from '../../hooks/usePartidos'
 
-const props = defineProps<{ group: Group }>()
+const props = withDefaults(
+  defineProps<{
+    groups: UserGroup[]
+    loading?: boolean
+    errorMessage?: string | null
+  }>(),
+  { loading: false, errorMessage: null },
+)
+
 const emit = defineEmits<{
   (
     e: 'submit',
     payload: {
       partido: Game
-      prediccionGolesLocal: number
-      prediccionGolesVisitante: number
+      grupoId: string
+      golesLocal: number
+      golesVisitante: number
     },
   ): void
   (e: 'cancel'): void
 }>()
 
-const MS_HOUR = 60 * 60 * 1000
-const MS_DAY = 24 * MS_HOUR
+const { partidos, isLoading: partidosLoading } = usePartidos()
 
-const MOCK_GAMES: Game[] = [
-  {
-    id: 'g1',
-    golesLocal: 0,
-    golesVisitante: 0,
-    fecha: 7,
-    fechaPartido: Date.now() + 2 * MS_DAY,
-    equipoLocal: {
-      nombre: 'Vélez Sarsfield',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/velez.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Estudiantes',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/estudiantes.jpg',
-    },
-  },
-  {
-    id: 'g2',
-    golesLocal: 0,
-    golesVisitante: 0,
-    fecha: 7,
-    fechaPartido: Date.now() + 3 * MS_DAY,
-    equipoLocal: {
-      nombre: "Newell's",
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/newells.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Rosario Central',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/central.jpg',
-    },
-  },
-  {
-    id: 'g3',
-    golesLocal: 0,
-    golesVisitante: 0,
-    fecha: 7,
-    fechaPartido: Date.now() + 5 * MS_DAY,
-    equipoLocal: {
-      nombre: 'Talleres',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/talleres.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Belgrano',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/belgrano.jpg',
-    },
-  },
-]
+// Solo mostramos partidos pronosticables (no jugados todavía)
+const availableGames = computed(() =>
+  partidos.value.filter((g) => g.estado === 'POR_JUGARSE'),
+)
 
 const selectedGameId = ref<string>('')
+const selectedGroupId = ref<string>(
+  props.groups.length === 1 ? String(props.groups[0].id) : '',
+)
+
+// Si la lista de grupos cambia, mantener consistencia: si queda solo uno, autoselect
+watch(
+  () => props.groups,
+  (g) => {
+    if (g.length === 1) selectedGroupId.value = String(g[0].id)
+    else if (!g.some((group) => String(group.id) === selectedGroupId.value)) {
+      selectedGroupId.value = ''
+    }
+  },
+)
 
 const selectedGame = computed<Game | null>(
-  () => MOCK_GAMES.find((g) => g.id === selectedGameId.value) ?? null,
+  () => availableGames.value.find((g) => String(g.id) === selectedGameId.value) ?? null,
 )
 
 const newPrediction = computed(() =>
   selectedGame.value
     ? {
-        grupo: props.group,
-        prediccionGolesLocal: 0,
-        prediccionGolesVisitante: 0,
+        id: '',
+        golesLocal: 0,
+        golesVisitante: 0,
+        fechaPronostico: new Date().toISOString(),
+        puntosObtenidos: 0,
         partido: selectedGame.value,
       }
     : null,
 )
 
-const onCardSubmit = (payload: {
-  prediccionGolesLocal: number
-  prediccionGolesVisitante: number
-}) => {
-  if (!selectedGame.value) return
+const onCardSubmit = (payload: { golesLocal: number; golesVisitante: number }) => {
+  if (!selectedGame.value || !selectedGroupId.value) return
   emit('submit', {
     partido: selectedGame.value,
-    prediccionGolesLocal: payload.prediccionGolesLocal,
-    prediccionGolesVisitante: payload.prediccionGolesVisitante,
+    grupoId: selectedGroupId.value,
+    golesLocal: payload.golesLocal,
+    golesVisitante: payload.golesVisitante,
   })
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex flex-col gap-1.5">
-      <label for="games-dropdown" class="text-sm !text-text font-medium">Partido</label>
-      <select id="games-dropdown" v-model="selectedGameId" class="!bg-bg">
-        <option value="" disabled>Elegí un partido</option>
-        <option v-for="game in MOCK_GAMES" :key="game.id" :value="game.id">
-          {{ game.equipoLocal.nombre }} vs {{ game.equipoVisitante.nombre }} — Fecha {{ game.fecha }}
+    <!-- selector de grupo: solo cuando hay más de uno -->
+    <div v-if="groups.length > 1" class="flex flex-col gap-1.5">
+      <label for="groups-dropdown" class="text-sm !text-text font-medium">Grupo</label>
+      <select id="groups-dropdown" v-model="selectedGroupId" class="!bg-bg">
+        <option value="" disabled>Elegí un grupo</option>
+        <option v-for="g in groups" :key="g.id" :value="String(g.id)">
+          {{ g.nombre }}
         </option>
       </select>
     </div>
 
+    <div class="flex flex-col gap-1.5">
+      <label for="games-dropdown" class="text-sm !text-text font-medium">Partido</label>
+      <select
+        id="games-dropdown"
+        v-model="selectedGameId"
+        :disabled="partidosLoading"
+        class="!bg-bg"
+      >
+        <option value="" disabled>
+          {{ partidosLoading ? 'Cargando partidos...' : 'Elegí un partido' }}
+        </option>
+        <option v-for="game in availableGames" :key="game.id" :value="String(game.id)">
+          {{ game.equipoLocal.nombre }} vs {{ game.equipoVisitante.nombre }} — Fecha {{ game.fecha.id }}
+        </option>
+      </select>
+      <p v-if="!partidosLoading && availableGames.length === 0" class="text-xs">
+        No hay partidos pronosticables por ahora.
+      </p>
+    </div>
+
     <PredictionCard
-      v-if="newPrediction"
+      v-if="newPrediction && selectedGroupId"
       :prediction="newPrediction"
       always-enabled
       @submit="onCardSubmit"
     />
 
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+
     <div class="flex justify-end">
       <button
         type="button"
         class="!bg-transparent !text-text border border-border-base hover:!bg-bg"
+        :disabled="loading"
         @click="emit('cancel')"
       >
         Cancelar
       </button>
     </div>
+
+    <p v-if="loading" class="text-xs text-text-muted text-right">Guardando pronóstico...</p>
   </div>
 </template>

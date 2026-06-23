@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import NewPrediction from '../forms/NewPrediction.vue'
-import type { Game, UserGroup } from '../../utils/types'
-
-export interface NewPredictionPayload {
-  partido: Game
-  grupoId: string
-  golesLocal: number
-  golesVisitante: number
-}
+import NewGroup, { type NewGroupPayload } from '../forms/NewGroup.vue'
 
 interface Props {
   showModal: boolean
   toggleModal: () => void
-  groups: UserGroup[]
   loading?: boolean
   errorMessage?: string | null
 }
@@ -20,7 +11,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { loading: false, errorMessage: null })
 
 const emit = defineEmits<{
-  (e: 'submit', payload: NewPredictionPayload): void
+  (e: 'submit', payload: NewGroupPayload): void
 }>()
 
 const onBackdropClick = () => {
@@ -28,7 +19,7 @@ const onBackdropClick = () => {
   props.toggleModal()
 }
 
-const onSubmit = (payload: NewPredictionPayload) => {
+const onSubmit = (payload: NewGroupPayload) => {
   emit('submit', payload)
 }
 </script>
@@ -45,7 +36,7 @@ const onSubmit = (payload: NewPredictionPayload) => {
       class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="new-prediction-title"
+      aria-labelledby="new-group-title"
       @click.self="onBackdropClick"
     >
       <Transition
@@ -62,7 +53,7 @@ const onSubmit = (payload: NewPredictionPayload) => {
           <header
             class="flex items-center justify-between px-5 py-4 border-b border-border-base"
           >
-            <h3 id="new-prediction-title" class="!mb-0 text-lg">Nuevo pronóstico</h3>
+            <h3 id="new-group-title" class="!mb-0 text-lg">Crear grupo</h3>
             <button
               type="button"
               class="!p-2 !bg-transparent !border-0 size-8 rounded-full text-text-muted hover:!text-text hover:!bg-bg flex items-center justify-center"
@@ -86,8 +77,7 @@ const onSubmit = (payload: NewPredictionPayload) => {
           </header>
 
           <div class="flex-1 overflow-y-auto p-5">
-            <NewPrediction
-              :groups="groups"
+            <NewGroup
               :loading="loading"
               :error-message="errorMessage"
               @submit="onSubmit"

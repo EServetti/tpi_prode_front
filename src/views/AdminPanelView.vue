@@ -1,102 +1,36 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ProtectedLayout from '../components/ProtectedLayout.vue'
 import EmptyState from '../components/EmptyState.vue'
 import AdminGameCard from '../components/forms/AdminGameCard.vue'
-import type { Game } from '../utils/types'
+import { usePartidos } from '../hooks/usePartidos'
 
-const MS_HOUR = 60 * 60 * 1000
-const MS_DAY = 24 * MS_HOUR
-
-const MOCK_GAMES: Game[] = [
-  {
-    id: 'g1',
-    fecha: 5,
-    fechaPartido: Date.now() - 5 * MS_DAY,
-    golesLocal: 2,
-    golesVisitante: 1,
-    equipoLocal: {
-      nombre: 'River Plate',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/river.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Boca Juniors',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/boca2026.jpg',
-    },
-  },
-  {
-    id: 'g2',
-    fecha: 5,
-    fechaPartido: Date.now() - 3 * MS_HOUR,
-    golesLocal: 0,
-    golesVisitante: 3,
-    equipoLocal: {
-      nombre: 'Racing Club',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/racing.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Independiente',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/independiente.jpg',
-    },
-  },
-  {
-    id: 'g3',
-    fecha: 6,
-    fechaPartido: Date.now() + 2 * MS_DAY,
-    golesLocal: 0,
-    golesVisitante: 0,
-    equipoLocal: {
-      nombre: 'San Lorenzo',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/sanlorenzo.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Huracán',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/huracan.jpg',
-    },
-  },
-  {
-    id: 'g4',
-    fecha: 6,
-    fechaPartido: Date.now() + 3 * MS_DAY,
-    golesLocal: 0,
-    golesVisitante: 0,
-    equipoLocal: {
-      nombre: 'Vélez Sarsfield',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/velez.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Estudiantes',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/estudiantes.jpg',
-    },
-  },
-  {
-    id: 'g5',
-    fecha: 7,
-    fechaPartido: Date.now() + 6 * MS_DAY,
-    golesLocal: 0,
-    golesVisitante: 0,
-    equipoLocal: {
-      nombre: 'Talleres',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/talleres.jpg',
-    },
-    equipoVisitante: {
-      nombre: 'Belgrano',
-      escudo: 'https://paladarnegro.net/escudoteca/argentina/primeradivision/img/belgrano.jpg',
-    },
-  },
-]
+const { partidos, isLoading: partidosLoading } = usePartidos()
 
 const fechaOptions = computed(() =>
-  Array.from(new Set(MOCK_GAMES.map((g) => g.fecha))).sort((a, b) => a - b),
+  Array.from(new Set(partidos.value.map((g) => String(g.fecha.id)))).sort(
+    (a, b) => Number(a) - Number(b),
+  ),
 )
 
-const selectedFecha = ref<number>(fechaOptions.value[0] ?? 1)
+const selectedFecha = ref<string>('')
+
+// Cuando llegan los partidos, autoselect la primera fecha disponible
+watch(
+  fechaOptions,
+  (options) => {
+    if (!selectedFecha.value && options.length > 0) {
+      selectedFecha.value = options[0]
+    }
+  },
+  { immediate: true },
+)
 
 const filteredGames = computed(() =>
-  MOCK_GAMES.filter((g) => g.fecha === selectedFecha.value),
+  partidos.value.filter((g) => String(g.fecha.id) === selectedFecha.value),
 )
 
-const onSelectFecha = (fecha: number) => {
+const onSelectFecha = (fecha: string) => {
   selectedFecha.value = fecha
 }
 
@@ -104,8 +38,9 @@ const onGameSubmit = (_payload: {
   gameId: string
   golesLocal: number
   golesVisitante: number
+  fechaInicio: string
 }) => {
-  // TODO: conectar con el backend para persistir el resultado
+  // TODO: PUT /partidos/{id} con { fechaId, fechaInicio, golesLocal, golesVisitante }
 }
 </script>
 
@@ -193,7 +128,14 @@ const onGameSubmit = (_payload: {
       </header>
 
       <div
-        v-if="filteredGames.length === 0"
+        v-if="partidosLoading"
+        class="flex-1 flex items-center justify-center text-sm text-text-muted"
+      >
+        Cargando partidos...
+      </div>
+
+      <div
+        v-else-if="filteredGames.length === 0"
         class="flex-1 flex items-center justify-center"
       >
         <EmptyState

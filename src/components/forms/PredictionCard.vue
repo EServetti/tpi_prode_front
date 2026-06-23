@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Prediction } from '../../utils/types'
 
 interface Props {
@@ -7,55 +7,46 @@ interface Props {
   alwaysEnabled?: boolean
 }
 
-const params = withDefaults(defineProps<Props>(), { alwaysEnabled: false })
-const prediction = params.prediction
+const props = withDefaults(defineProps<Props>(), { alwaysEnabled: false })
 
 const emit = defineEmits<{
-  (
-    e: 'submit',
-    payload: {
-      prediccionGolesLocal: number
-      prediccionGolesVisitante: number
-    },
-  ): void
+  (e: 'submit', payload: { golesLocal: number; golesVisitante: number }): void
 }>()
 
 const internalEditing = ref(false)
-const isEditing = computed(() => params.alwaysEnabled || internalEditing.value)
+const isEditing = computed(() => props.alwaysEnabled || internalEditing.value)
 
-const golesLocalRef = ref(prediction.prediccionGolesLocal)
-const golesVisitanteRef = ref(prediction.prediccionGolesVisitante)
+const golesLocalRef = ref(props.prediction.golesLocal)
+const golesVisitanteRef = ref(props.prediction.golesVisitante)
+
+watch(
+  () => props.prediction,
+  (p) => {
+    golesLocalRef.value = p.golesLocal
+    golesVisitanteRef.value = p.golesVisitante
+  },
+)
 
 const hasChanges = computed(
   () =>
-    prediction.prediccionGolesLocal !== golesLocalRef.value ||
-    prediction.prediccionGolesVisitante !== golesVisitanteRef.value,
+    props.prediction.golesLocal !== golesLocalRef.value ||
+    props.prediction.golesVisitante !== golesVisitanteRef.value,
 )
 
-const showActions = computed(() => params.alwaysEnabled || hasChanges.value)
+const showActions = computed(() => props.alwaysEnabled || hasChanges.value)
 
-// El partido queda bloqueado cuando ya empezó o faltan 30 min o menos para que empiece
+// El partido queda bloqueado cuando ya empezó o faltan 30 min o menos para que empiece,
+// o cuando el backend lo marca como no jugable.
+const fechaInicioTs = computed(() =>
+  new Date(props.prediction.partido.fechaInicio).getTime(),
+)
 const isLocked = computed(
-  () => prediction.partido.fechaPartido <= Date.now() + 30 * 60 * 1000,
+  () =>
+    props.prediction.partido.estado !== 'POR_JUGARSE' ||
+    fechaInicioTs.value <= Date.now() + 30 * 60 * 1000,
 )
 
-const sign = (a: number, b: number) => Math.sign(a - b)
-
-const points = computed(() => {
-  if (
-    prediction.prediccionGolesLocal === prediction.partido.golesLocal &&
-    prediction.prediccionGolesVisitante === prediction.partido.golesVisitante
-  ) {
-    return 3
-  }
-  if (
-    sign(prediction.prediccionGolesLocal, prediction.prediccionGolesVisitante) ===
-    sign(prediction.partido.golesLocal, prediction.partido.golesVisitante)
-  ) {
-    return 1
-  }
-  return 0
-})
+const points = computed(() => props.prediction.puntosObtenidos ?? 0)
 
 const pointsLabel = computed(() => (points.value === 1 ? '1 punto' : `${points.value} puntos`))
 
@@ -66,15 +57,15 @@ const pointsClass = computed(() => {
 })
 
 const onCancel = () => {
-  golesLocalRef.value = prediction.prediccionGolesLocal
-  golesVisitanteRef.value = prediction.prediccionGolesVisitante
+  golesLocalRef.value = props.prediction.golesLocal
+  golesVisitanteRef.value = props.prediction.golesVisitante
   internalEditing.value = false
 }
 
 const onSubmit = () => {
   emit('submit', {
-    prediccionGolesLocal: golesLocalRef.value,
-    prediccionGolesVisitante: golesVisitanteRef.value,
+    golesLocal: golesLocalRef.value,
+    golesVisitante: golesVisitanteRef.value,
   })
   internalEditing.value = false
 }
@@ -86,44 +77,32 @@ const onSubmit = () => {
   >
     <!-- header -->
     <div class="flex items-center justify-between text-xs gap-2">
-      <span class="inline-flex items-center gap-2 min-w-0">
-        <img
-          :src="prediction.grupo.icono"
-          :alt="prediction.grupo.nombre"
-          class="size-5 rounded-full object-cover shrink-0"
-        />
-        <span class="!text-text font-medium truncate">
-          {{ prediction.grupo.nombre }}
-        </span>
+      <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+        Fecha {{ prediction.partido.fecha.id }}
       </span>
-      <span class="inline-flex items-center gap-2 shrink-0">
-        <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-          Fecha {{ prediction.partido.fecha }}
-        </span>
-        <button
-          v-if="!alwaysEnabled"
-          type="button"
-          class="!p-1.5 !bg-transparent !border-0 size-7 rounded-md text-text-muted hover:!text-primary hover:!bg-primary/10 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:!text-text-muted disabled:hover:!bg-transparent"
-          aria-label="Editar pronóstico"
-          :disabled="isLocked"
-          :title="isLocked ? 'El partido ya empezó o está por empezar' : 'Editar pronóstico'"
-          @click="internalEditing = !internalEditing"
+      <button
+        v-if="!alwaysEnabled"
+        type="button"
+        class="!p-1.5 !bg-transparent !border-0 size-7 rounded-md text-text-muted hover:!text-primary hover:!bg-primary/10 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:!text-text-muted disabled:hover:!bg-transparent"
+        aria-label="Editar pronóstico"
+        :disabled="isLocked"
+        :title="isLocked ? 'El partido ya empezó o está por empezar' : 'Editar pronóstico'"
+        @click="internalEditing = !internalEditing"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="size-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="size-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-        </button>
-      </span>
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+      </button>
     </div>
 
     <!-- equipos y marcador pronosticado -->
@@ -140,11 +119,11 @@ const onSubmit = () => {
       </div>
 
       <div class="flex items-center gap-2 font-bold text-2xl !text-text">
-        <span v-if="!isEditing">{{ prediction.prediccionGolesLocal }}</span>
-        <input v-else v-model="golesLocalRef" class="!w-10" type="number" min="0" />
+        <span v-if="!isEditing">{{ prediction.golesLocal }}</span>
+        <input v-else v-model.number="golesLocalRef" class="!w-10" type="number" min="0" />
         <span class="text-text-muted text-base">vs</span>
-        <span v-if="!isEditing">{{ prediction.prediccionGolesVisitante }}</span>
-        <input v-else v-model="golesVisitanteRef" class="!w-10" type="number" min="0" />
+        <span v-if="!isEditing">{{ prediction.golesVisitante }}</span>
+        <input v-else v-model.number="golesVisitanteRef" class="!w-10" type="number" min="0" />
       </div>
 
       <div class="flex-1 flex flex-col items-center gap-2 text-center min-w-0">
@@ -159,7 +138,7 @@ const onSubmit = () => {
       </div>
     </div>
 
-    <!-- resultado real + badge de puntos -->
+    <!-- resultado real + badge de puntos (solo si el partido ya empezó/terminó) -->
     <div
       v-if="isLocked"
       class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg border border-border-base"
@@ -170,10 +149,7 @@ const onSubmit = () => {
           {{ prediction.partido.golesLocal }} - {{ prediction.partido.golesVisitante }}
         </span>
       </div>
-      <span
-        class="px-2 py-0.5 rounded-full text-xs font-semibold"
-        :class="pointsClass"
-      >
+      <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="pointsClass">
         {{ pointsLabel }}
       </span>
     </div>

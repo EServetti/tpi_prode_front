@@ -6,8 +6,23 @@ export const ENDPOINTS = {
     register: '/auth/register',
     me: '/auth/me',
   },
-  matches: '/matches',
-  predictions: '/predictions',
+  grupos: {
+    base: '/grupos',
+    byId: (id: string) => `/grupos/${id}`,
+    miembros: (id: string) => `/grupos/${id}/miembros`,
+    ingresar: '/grupos/ingresar',
+    expulsar: '/grupos/expulsar',
+    porUsuario: (idUsuario: string) => `/grupos/usuario/${idUsuario}`,
+  },
+  partidos: {
+    base: '/partidos',
+    byId: (id: string) => `/partidos/${id}`,
+  },
+  pronosticos: {
+    base: '/pronosticos',
+    byId: (id: string) => `/pronosticos/${id}`,
+    porUsuario: (idUsuario: string) => `/pronosticos/usuario/${idUsuario}`,
+  },
   ranking: '/ranking',
 } as const
 

@@ -15,46 +15,40 @@ const emit = defineEmits<{
       gameId: string
       golesLocal: number
       golesVisitante: number
-      fechaPartido: number
+      fechaInicio: string
     },
   ): void
 }>()
 
-// timestamp (ms) → "YYYY-MM-DDTHH:mm" para <input type="datetime-local">
-const toDatetimeLocal = (ts: number): string => {
-  const d = new Date(ts)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+// ISO local "YYYY-MM-DDTHH:mm:ss" → "YYYY-MM-DDTHH:mm" para <input type="datetime-local">
+const toDatetimeLocal = (iso: string): string => iso.slice(0, 16)
 
 const golesLocalRef = ref(props.game.golesLocal)
 const golesVisitanteRef = ref(props.game.golesVisitante)
-const fechaPartidoRef = ref(toDatetimeLocal(props.game.fechaPartido))
+const fechaInicioRef = ref(toDatetimeLocal(props.game.fechaInicio))
 
 watch(
   () => props.game,
   (g) => {
     golesLocalRef.value = g.golesLocal
     golesVisitanteRef.value = g.golesVisitante
-    fechaPartidoRef.value = toDatetimeLocal(g.fechaPartido)
+    fechaInicioRef.value = toDatetimeLocal(g.fechaInicio)
   },
 )
-
-const fechaPartidoTimestamp = computed(() => new Date(fechaPartidoRef.value).getTime())
 
 const hasChanges = computed(
   () =>
     golesLocalRef.value !== props.game.golesLocal ||
     golesVisitanteRef.value !== props.game.golesVisitante ||
-    fechaPartidoTimestamp.value !== props.game.fechaPartido,
+    fechaInicioRef.value !== toDatetimeLocal(props.game.fechaInicio),
 )
 
-const isPast = computed(() => props.game.fechaPartido <= Date.now())
+const isPast = computed(() => props.game.estado === 'FINALIZADO')
 
 const onCancel = () => {
   golesLocalRef.value = props.game.golesLocal
   golesVisitanteRef.value = props.game.golesVisitante
-  fechaPartidoRef.value = toDatetimeLocal(props.game.fechaPartido)
+  fechaInicioRef.value = toDatetimeLocal(props.game.fechaInicio)
 }
 
 const onSubmit = () => {
@@ -62,7 +56,7 @@ const onSubmit = () => {
     gameId: props.game.id,
     golesLocal: golesLocalRef.value,
     golesVisitante: golesVisitanteRef.value,
-    fechaPartido: fechaPartidoTimestamp.value,
+    fechaInicio: `${fechaInicioRef.value}:00`,
   })
 }
 </script>
@@ -74,7 +68,7 @@ const onSubmit = () => {
     <div class="flex items-center justify-between text-xs gap-2">
       <span class="inline-flex items-center gap-2 shrink-0">
         <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-          Fecha {{ game.fecha }}
+          Fecha {{ game.fecha.id }}
         </span>
         <span
           v-if="isPast"
@@ -88,7 +82,7 @@ const onSubmit = () => {
     <label class="flex flex-col gap-1.5 text-xs">
       <span class="!text-text font-medium">Fecha y hora del partido</span>
       <input
-        v-model="fechaPartidoRef"
+        v-model="fechaInicioRef"
         type="datetime-local"
         class="!w-full"
       />

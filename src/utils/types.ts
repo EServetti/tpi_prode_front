@@ -22,30 +22,63 @@ export interface AuthResponse {
 }
 
 export interface Team {
+  id: string
   nombre: string
   escudo: string
+}
+
+export type EstadoPartido = 'POR_JUGARSE' | 'EN_CURSO' | 'FINALIZADO' | 'SUSPENDIDO'
+export type EstadoFecha = 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA'
+export type Tendencia = 'LOCAL' | 'EMPATE' | 'VISITANTE'
+
+export interface Fecha {
+  id: string
+  estadoFecha: EstadoFecha
 }
 
 export interface Group {
   id: string
   nombre: string
   icono: string
+  codigoInvitacion?: string
+  cantidadParticipantes?: number
+}
+
+// Grupo tal como lo devuelve /grupos/usuario/{id}: incluye el rol del usuario actual.
+export interface UserGroup extends Group {
+  rol: RolMiembro
+}
+
+export type RolMiembro = 'USUARIO' | 'CREADOR'
+export type EstadoInvitacion = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA'
+
+export interface MiembroGrupo {
+  id: string
+  miembro: User
+  grupo: Group
+  codigoInvitacion: string
+  rol: RolMiembro
+  estado: EstadoInvitacion
 }
 
 export interface Game {
   id: string
+  fechaInicio: string
   golesLocal: number
   golesVisitante: number
+  estado: EstadoPartido
+  tendencia: Tendencia
+  fecha: Fecha
   equipoLocal: Team
   equipoVisitante: Team
-  fecha: number
-  fechaPartido: number
 }
 
 export interface Prediction {
-  prediccionGolesLocal: number
-  prediccionGolesVisitante: number
-  grupo: Group
+  id: string
+  golesLocal: number
+  golesVisitante: number
+  fechaPronostico: string
+  puntosObtenidos: number
   partido: Game
 }
 

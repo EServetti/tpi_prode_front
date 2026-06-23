@@ -1,29 +1,80 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ProtectedLayout from '../components/ProtectedLayout.vue'
 import UserCard from '../components/UserCard.vue'
 import EmptyState from '../components/EmptyState.vue'
 import PredictionCard from '../components/forms/PredictionCard.vue'
-import NewPredictionModal from '../components/modals/NewPredictionModal.vue'
-import { MOCK_PREDICTIONS } from '../constants/app-data'
+import NewPredictionModal, {
+  type NewPredictionPayload,
+} from '../components/modals/NewPredictionModal.vue'
+import {
+  useGroupMembers,
+  useKickMember,
+  useUpdateGroup,
+  useUserGroups,
+} from '../hooks/useGroups'
+import { useCreatePrediction, useUserPredictions } from '../hooks/usePredictions'
+import { useAuthContext } from '../context/AuthContext'
+import { getErrorMessage } from '../utils/error'
 import type { Group, GroupUser } from '../utils/types'
 
-const toggleSection = ref<'predictions' | 'ranking' | 'info'>('ranking')
+const route = useRoute()
+const router = useRouter()
 
-const group: Group = {
-  id: '1',
-  nombre: 'Grupo amigos',
-  icono:
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTv3pdU5JXffFVf_PIsSusNpga_ZMi1Rgux8MO251d-rg&s=10',
-}
-const groupName = group.nombre
+const { user: currentUser } = useAuthContext()
+const { groups: userGroups, isLoading: groupsLoading } = useUserGroups()
 
-const formImageUrl = ref(group.icono)
-const formName = ref(group.nombre)
-const formCode = ref('AMIGOS-2026')
+const groupId = computed(() => String(route.params.id))
+
+const userGroup = computed(
+  () => userGroups.value.find((g) => String(g.id) === groupId.value) ?? null,
+)
+
+const group = computed<Group | null>(() => userGroup.value)
+const isCreator = computed(() => userGroup.value?.rol === 'CREADOR')
+
+type Section = 'predictions' | 'ranking' | 'info'
+const toggleSection = ref<Section>('ranking')
+
+// Si el usuario está en "info" pero pierde el rol de creador, lo sacamos de esa pestaña
+watch(isCreator, (creator) => {
+  if (!creator && toggleSection.value === 'info') toggleSection.value = 'ranking'
+})
+
+const formImageUrl = ref('')
+const formName = ref('')
+const formCode = ref('')
+
+// Cargar el formulario con los datos reales cuando llegan
+watch(
+  group,
+  (g) => {
+    if (!g) return
+    formImageUrl.value = g.icono ?? ''
+    formName.value = g.nombre ?? ''
+    formCode.value = g.codigoInvitacion ?? ''
+  },
+  { immediate: true },
+)
+
+const updateGroupMutation = useUpdateGroup()
+
+const updateGroupError = computed(() => {
+  if (!updateGroupMutation.isError.value) return null
+  return getErrorMessage(updateGroupMutation.error.value, 'No se pudo actualizar el grupo')
+})
 
 const onInfoSubmit = () => {
-  // TODO: enviar al backend cuando esté disponible
+  if (!group.value) return
+  updateGroupMutation.mutate({
+    id: group.value.id,
+    payload: {
+      nombre: formName.value.trim(),
+      icono: formImageUrl.value.trim(),
+      codigoInvitacion: formCode.value.trim(),
+    },
+  })
 }
 
 const showNewPredictionModal = ref(false)
@@ -31,23 +82,73 @@ const toggleNewPredictionModal = () => {
   showNewPredictionModal.value = !showNewPredictionModal.value
 }
 
-const MOCK_USERS: GroupUser[] = [
-  { id: '1', nombre: 'Lucía Fernández', puntos: 248, resultadosExactos: 12 },
-  { id: '2', nombre: 'Mateo Gómez', puntos: 221, resultadosExactos: 9 },
-  { id: '3', nombre: 'Sofía Martínez', puntos: 198, resultadosExactos: 8 },
-  { id: '4', nombre: 'Juan Pérez', puntos: 175, resultadosExactos: 6 },
-  { id: '5', nombre: 'Camila Rodríguez', puntos: 142, resultadosExactos: 5 },
-  { id: '6', nombre: 'Tomás López', puntos: 118, resultadosExactos: 3 },
-  { id: '7', nombre: 'Valentina Díaz', puntos: 97, resultadosExactos: 2 },
-]
+const createPredictionMutation = useCreatePrediction()
 
-const rankedUsers = computed(() =>
-  [...MOCK_USERS].sort((a, b) => b.puntos - a.puntos),
+const createPredictionError = computed(() => {
+  if (!createPredictionMutation.isError.value) return null
+  return getErrorMessage(
+    createPredictionMutation.error.value,
+    'No se pudo guardar el pronóstico',
+  )
+})
+
+const onCreatePrediction = (payload: NewPredictionPayload) => {
+  createPredictionMutation.mutate(
+    {
+      partidoId: payload.partido.id,
+      grupoId: payload.grupoId,
+      golesLocal: payload.golesLocal,
+      golesVisitante: payload.golesVisitante,
+    },
+    {
+      onSuccess: () => {
+        showNewPredictionModal.value = false
+        createPredictionMutation.reset()
+      },
+    },
+  )
+}
+
+const { data: membersData, isLoading: membersLoading } = useGroupMembers(
+  () => group.value?.id ?? null,
 )
 
-const userPredictions = computed(() =>
-  MOCK_PREDICTIONS.filter((p) => p.grupo.nombre === groupName),
+const members = computed<GroupUser[]>(() =>
+  (membersData.value ?? []).map((m) => ({
+    id: m.miembro.id,
+    nombre: m.miembro.nombreUsuario,
+    puntos: 0,
+    resultadosExactos: 0,
+  })),
 )
+
+const creatorId = computed(
+  () =>
+    membersData.value?.find((m) => m.rol === 'CREADOR')?.miembro.id ?? null,
+)
+
+const rankedUsers = computed(() => [...members.value].sort((a, b) => b.puntos - a.puntos))
+
+// Reusa la cache de useUserPredictions (misma queryKey por userId). El hook se llama otra vez
+// pero vue-query devuelve los datos cacheados al instante si ya se cargaron en el dashboard.
+// TODO: cuando el backend asocie partidos a grupos/torneos, filtrar acá por ese vínculo.
+const { predictions: userPredictions, isLoading: userPredictionsLoading } =
+  useUserPredictions()
+
+const goBack = () => router.replace({ name: 'dashboard' })
+
+const kickMutation = useKickMember()
+
+const onKickUser = (user: GroupUser) => {
+  if (!group.value) return
+  if (user.id === currentUser.value?.id) return
+  const confirmed = window.confirm(`¿Expulsar a ${user.nombre} del grupo?`)
+  if (!confirmed) return
+  kickMutation.mutate({
+    usuarioId: user.id,
+    grupoId: group.value.id,
+  })
+}
 </script>
 
 <template>
@@ -57,11 +158,14 @@ const userPredictions = computed(() =>
         class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-border-base"
       >
         <div>
-          <h2 class="text-lg sm:text-xl !mb-0">{{ groupName }}</h2>
-          <p class="text-xs">{{ MOCK_USERS.length }} participantes</p>
+          <h2 class="text-lg sm:text-xl !mb-0">
+            {{ group?.nombre ?? (groupsLoading ? 'Cargando...' : 'Grupo') }}
+          </h2>
+          <p class="text-xs">{{ members.length }} participantes</p>
         </div>
 
         <div
+          v-if="group"
           class="inline-flex w-full sm:w-auto bg-surface border border-border-base rounded-full p-1 gap-1"
         >
           <button
@@ -89,6 +193,7 @@ const userPredictions = computed(() =>
             Mis pronósticos
           </button>
           <button
+            v-if="isCreator"
             type="button"
             class="flex-1 sm:flex-none !px-2 sm:!px-3 !py-1 sm:!py-1.5 !border-0 !rounded-full text-xs sm:text-sm transition-colors"
             :class="
@@ -103,14 +208,90 @@ const userPredictions = computed(() =>
         </div>
       </header>
 
+      <!-- loading -->
+      <div
+        v-if="groupsLoading && !group"
+        class="flex-1 flex items-center justify-center text-sm text-text-muted"
+      >
+        Cargando grupo...
+      </div>
+
+      <!-- grupo no encontrado -->
+      <div
+        v-else-if="!group"
+        class="flex-1 flex items-center justify-center"
+      >
+        <EmptyState
+          title="Grupo no encontrado"
+          description="No pertenecés a este grupo o ya no está disponible."
+          cta-label="Volver al inicio"
+          @cta="goBack"
+        >
+          <template #icon>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="size-7"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4" />
+              <path d="M12 16h.01" />
+            </svg>
+          </template>
+        </EmptyState>
+      </div>
+
       <!-- sección ranking -->
-      <div v-if="toggleSection === 'ranking'" class="flex-1 p-6">
-        <ul class="flex flex-col gap-3 max-w-2xl mx-auto">
+      <div v-else-if="toggleSection === 'ranking'" class="flex-1 p-6">
+        <div
+          v-if="membersLoading"
+          class="flex-1 flex items-center justify-center text-sm text-text-muted"
+        >
+          Cargando participantes...
+        </div>
+
+        <div
+          v-else-if="rankedUsers.length === 0"
+          class="flex-1 flex items-center justify-center"
+        >
+          <EmptyState
+            title="Todavía no hay participantes"
+            description="Compartí el código de invitación para que se sumen al grupo."
+          >
+            <template #icon>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-7"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </template>
+          </EmptyState>
+        </div>
+
+        <ul v-else class="flex flex-col gap-3 max-w-2xl mx-auto">
           <UserCard
             v-for="(user, idx) in rankedUsers"
             :key="user.id"
             :user="user"
             :position="idx + 1"
+            :can-kick="isCreator && user.id !== currentUser?.id"
+            :is-creator="String(user.id) === String(creatorId)"
+            @kick="onKickUser"
           />
         </ul>
       </div>
@@ -118,13 +299,21 @@ const userPredictions = computed(() =>
       <!-- sección pronosticos -->
       <div v-else-if="toggleSection === 'predictions'" class="flex-1 flex flex-col">
         <div
-          v-if="userPredictions.length === 0"
+          v-if="userPredictionsLoading"
+          class="flex-1 flex items-center justify-center text-sm text-text-muted"
+        >
+          Cargando pronósticos...
+        </div>
+
+        <div
+          v-else-if="userPredictions.length === 0"
           class="flex-1 flex items-center justify-center"
         >
           <EmptyState
             title="No tenés pronósticos en este grupo"
             description="Cargá tus pronósticos para los partidos de la fecha y sumá puntos."
             cta-label="Cargar un pronóstico"
+            @cta="toggleNewPredictionModal"
           >
             <template #icon>
               <svg
@@ -188,8 +377,11 @@ const userPredictions = computed(() =>
         </div>
       </div>
 
-      <!-- sección datos del grupo -->
-      <div v-else-if="toggleSection === 'info'" class="flex-1 p-6">
+      <!-- sección datos del grupo (solo creador) -->
+      <div
+        v-else-if="toggleSection === 'info' && isCreator"
+        class="flex-1 p-6"
+      >
         <form
           class="flex flex-col gap-4 max-w-lg mx-auto !m-0 sm:!mx-auto"
           @submit.prevent="onInfoSubmit"
@@ -235,7 +427,7 @@ const userPredictions = computed(() =>
 
           <div class="flex flex-col gap-1.5">
             <label for="group-code" class="text-sm !text-text font-medium">
-              Código del grupo
+              Código de invitación
             </label>
             <input
               id="group-code"
@@ -249,9 +441,21 @@ const userPredictions = computed(() =>
             </p>
           </div>
 
+          <div
+            v-if="updateGroupMutation.isSuccess.value && !updateGroupMutation.isPending.value"
+            class="text-xs text-green-600"
+          >
+            Cambios guardados correctamente.
+          </div>
+          <p v-if="updateGroupError" class="error">{{ updateGroupError }}</p>
+
           <div class="flex justify-end mt-2">
-            <button type="submit" class="!bg-primary hover:!bg-primary-hover !text-white !border-0">
-              Guardar cambios
+            <button
+              type="submit"
+              class="!bg-primary hover:!bg-primary-hover !text-white !border-0"
+              :disabled="updateGroupMutation.isPending.value"
+            >
+              {{ updateGroupMutation.isPending.value ? 'Guardando...' : 'Guardar cambios' }}
             </button>
           </div>
         </form>
@@ -261,7 +465,10 @@ const userPredictions = computed(() =>
     <NewPredictionModal
       :show-modal="showNewPredictionModal"
       :toggle-modal="toggleNewPredictionModal"
-      :group="group"
+      :groups="userGroup ? [userGroup] : []"
+      :loading="createPredictionMutation.isPending.value"
+      :error-message="createPredictionError"
+      @submit="onCreatePrediction"
     />
   </ProtectedLayout>
 </template>
