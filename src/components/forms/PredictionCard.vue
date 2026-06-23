@@ -46,6 +46,8 @@ const isLocked = computed(
     fechaInicioTs.value <= Date.now() + 30 * 60 * 1000,
 )
 
+const isPlaying = computed(() => props.prediction.partido.estado === "EN_JUEGO")
+
 const points = computed(() => props.prediction.puntosObtenidos ?? 0)
 
 const pointsLabel = computed(() => (points.value === 1 ? '1 punto' : `${points.value} puntos`))
@@ -141,7 +143,7 @@ const onSubmit = () => {
     <!-- resultado real + badge de puntos (solo si el partido ya empezó/terminó) -->
     <div
       v-if="isLocked"
-      class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg border border-border-base"
+      class="flex items-center justify-start gap-3 px-3 py-2 rounded-lg bg-bg border border-border-base"
     >
       <div class="flex items-center gap-2 text-xs">
         <span class="text-text-muted uppercase tracking-wide">Resultado</span>
@@ -149,8 +151,12 @@ const onSubmit = () => {
           {{ prediction.partido.golesLocal }} - {{ prediction.partido.golesVisitante }}
         </span>
       </div>
-      <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="pointsClass">
+      <span class="px-2 py-0.5 rounded-full text-xs font-semibold ml-auto" :class="pointsClass">
         {{ pointsLabel }}
+      </span>
+      <span class="flex items-center gap-2 px-2 py-0.5 rounded-full text-xs font-semibold" v-if="isPlaying">
+        <span class="w-[10px] h-[10px] bg-green-300 rounded-full"></span>
+        En juego
       </span>
     </div>
 

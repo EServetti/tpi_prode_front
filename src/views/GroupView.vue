@@ -117,8 +117,8 @@ const members = computed<GroupUser[]>(() =>
   (membersData.value ?? []).map((m) => ({
     id: m.miembro.id,
     nombre: m.miembro.nombreUsuario,
-    puntos: 0,
-    resultadosExactos: 0,
+    puntos: m.puntos,
+    resultadosExactos: m.resultadosExactos,
   })),
 )
 

@@ -27,7 +27,7 @@ export interface Team {
   escudo: string
 }
 
-export type EstadoPartido = 'POR_JUGARSE' | 'EN_CURSO' | 'FINALIZADO' | 'SUSPENDIDO'
+export type EstadoPartido = 'POR_JUGARSE' | 'EN_JUEGO' | 'FINALIZADO' | 'SUSPENDIDO'
 export type EstadoFecha = 'PROGRAMADA' | 'EN_CURSO' | 'FINALIZADA'
 export type Tendencia = 'LOCAL' | 'EMPATE' | 'VISITANTE'
 
@@ -59,6 +59,8 @@ export interface MiembroGrupo {
   codigoInvitacion: string
   rol: RolMiembro
   estado: EstadoInvitacion
+  puntos: number
+  resultadosExactos: number
 }
 
 export interface Game {
@@ -80,6 +82,7 @@ export interface Prediction {
   fechaPronostico: string
   puntosObtenidos: number
   partido: Game
+  grupo: Group
 }
 
 export interface GroupUser {

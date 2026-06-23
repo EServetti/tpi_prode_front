@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Game } from '../../utils/types'
+import { useUpdatePartido } from '../../hooks/usePartidos';
+import type { ActualizarPartidoPayload } from '../../services/partidos.service';
 
 interface Props {
   game: Game
@@ -8,17 +10,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const emit = defineEmits<{
-  (
-    e: 'submit',
-    payload: {
-      gameId: string
-      golesLocal: number
-      golesVisitante: number
-      fechaInicio: string
-    },
-  ): void
-}>()
+const {isPending, mutate: updatePartido} = useUpdatePartido()
 
 // ISO local "YYYY-MM-DDTHH:mm:ss" → "YYYY-MM-DDTHH:mm" para <input type="datetime-local">
 const toDatetimeLocal = (iso: string): string => iso.slice(0, 16)
@@ -26,6 +18,7 @@ const toDatetimeLocal = (iso: string): string => iso.slice(0, 16)
 const golesLocalRef = ref(props.game.golesLocal)
 const golesVisitanteRef = ref(props.game.golesVisitante)
 const fechaInicioRef = ref(toDatetimeLocal(props.game.fechaInicio))
+const estadoPartidoRef = ref(props.game.estado)
 
 watch(
   () => props.game,
@@ -33,6 +26,7 @@ watch(
     golesLocalRef.value = g.golesLocal
     golesVisitanteRef.value = g.golesVisitante
     fechaInicioRef.value = toDatetimeLocal(g.fechaInicio)
+    estadoPartidoRef.value = g.estado
   },
 )
 
@@ -40,7 +34,8 @@ const hasChanges = computed(
   () =>
     golesLocalRef.value !== props.game.golesLocal ||
     golesVisitanteRef.value !== props.game.golesVisitante ||
-    fechaInicioRef.value !== toDatetimeLocal(props.game.fechaInicio),
+    fechaInicioRef.value !== toDatetimeLocal(props.game.fechaInicio) ||
+    estadoPartidoRef.value !== props.game.estado
 )
 
 const isPast = computed(() => props.game.estado === 'FINALIZADO')
@@ -49,16 +44,20 @@ const onCancel = () => {
   golesLocalRef.value = props.game.golesLocal
   golesVisitanteRef.value = props.game.golesVisitante
   fechaInicioRef.value = toDatetimeLocal(props.game.fechaInicio)
+  estadoPartidoRef.value = props.game.estado
 }
 
-const onSubmit = () => {
-  emit('submit', {
-    gameId: props.game.id,
-    golesLocal: golesLocalRef.value,
-    golesVisitante: golesVisitanteRef.value,
-    fechaInicio: `${fechaInicioRef.value}:00`,
-  })
+const hadleUpdate = () => {
+  const changesPayload: ActualizarPartidoPayload = {}
+  if (golesLocalRef.value !== props.game.golesLocal) changesPayload.golesLocal = golesLocalRef.value
+  if (golesVisitanteRef.value !== props.game.golesVisitante) changesPayload.golesVisitante = golesVisitanteRef.value
+  if (fechaInicioRef.value !== props.game.fechaInicio) changesPayload.fechaInicio = fechaInicioRef.value
+  if (estadoPartidoRef.value !== props.game.estado) changesPayload.estado = estadoPartidoRef.value
+
+  updatePartido({id: props.game.id, payload: changesPayload})
 }
+
+const isLocked = computed(() => props.game.estado === "FINALIZADO")
 </script>
 
 <template>
@@ -88,6 +87,15 @@ const onSubmit = () => {
       />
     </label>
 
+    <label class="flex flex-col gap-1.5 text-xs">
+      <span class="!text-text font-medium">Estado del partido</span>
+      <select id="game-status-dropdown" v-model="estadoPartidoRef">
+        <option value="POR_JUGARSE">Por jugarse</option>
+        <option value="EN_JUEGO">En juego</option>
+        <option value="FINALIZADO">Finalizado</option>
+      </select>
+    </label>
+
     <div class="flex items-center justify-between gap-3">
       <div class="flex-1 flex flex-col items-center gap-2 text-center min-w-0">
         <img
@@ -99,6 +107,7 @@ const onSubmit = () => {
           {{ game.equipoLocal.nombre }}
         </p>
         <input
+          :disabled="isLocked"
           v-model.number="golesLocalRef"
           type="number"
           min="0"
@@ -118,6 +127,7 @@ const onSubmit = () => {
           {{ game.equipoVisitante.nombre }}
         </p>
         <input
+          :disabled="isLocked"
           v-model.number="golesVisitanteRef"
           type="number"
           min="0"
@@ -129,9 +139,10 @@ const onSubmit = () => {
     <section v-if="hasChanges" class="w-full flex justify-end gap-2 mt-auto">
       <button
         type="button"
-        class="!p-0 !bg-transparent !border-0 size-8 rounded-full text-green-600 hover:!bg-green-600/10 flex items-center justify-center transition-colors"
+        class="!p-0 !bg-transparent !border-0 size-8 rounded-full text-green-600 hover:!bg-green-600/10 flex items-center justify-center transition-colors disabled:opacity-70"
         aria-label="Guardar resultado"
-        @click="onSubmit"
+        :disabled="isPending"
+        @click="hadleUpdate"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -148,8 +159,9 @@ const onSubmit = () => {
       </button>
       <button
         type="button"
-        class="!p-0 !bg-transparent !border-0 size-8 rounded-full text-text-muted hover:!bg-text-muted/10 hover:!text-text flex items-center justify-center transition-colors"
+        class="!p-0 !bg-transparent !border-0 size-8 rounded-full text-text-muted hover:!bg-text-muted/10 hover:!text-text flex items-center justify-center transition-colors disabled:opacity-70"
         aria-label="Cancelar cambios"
+        :disabled="isPending"
         @click="onCancel"
       >
         <svg

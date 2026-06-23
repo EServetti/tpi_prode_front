@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ProtectedLayout from '../components/ProtectedLayout.vue'
 import EmptyState from '../components/EmptyState.vue'
 import PredictionCard from '../components/forms/PredictionCard.vue'
@@ -98,8 +98,6 @@ const onCreatePrediction = (payload: NewPredictionPayload) => {
   )
 }
 
-// Por ahora el dropdown de "filtrar por grupo" no aplica: los pronósticos no están
-// vinculados a un grupo en el backend. Lo dejamos como selector visible pero sin filtro real.
 const selectedGroupId = ref<string | null>(null)
 
 const selectedGroup = computed(() =>
@@ -107,6 +105,13 @@ const selectedGroup = computed(() =>
     ? groups.value.find((g) => String(g.id) === String(selectedGroupId.value)) ?? null
     : null,
 )
+
+const filteredPredictions = computed(() => {
+  if (selectedGroupId.value === null) return predictions.value
+  return predictions.value.filter(
+    (p) => String(p.grupo.id) === String(selectedGroupId.value),
+  )
+})
 
 const selectedLabel = computed(() => selectedGroup.value?.nombre ?? 'Todos los grupos')
 
@@ -267,7 +272,7 @@ const onSelectGroup = (id: string | null) => {
         </div>
 
         <div
-          v-else-if="predictions.length === 0"
+          v-else-if="filteredPredictions.length === 0"
           class="flex-1 flex items-center justify-center"
         >
           <EmptyState
@@ -297,7 +302,7 @@ const onSelectGroup = (id: string | null) => {
         </div>
 
         <ul v-else class="flex-1 p-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <PredictionCard v-for="(prediction, idx) in predictions" 
+          <PredictionCard v-for="(prediction, idx) in filteredPredictions" 
           :key="idx"
           :prediction="prediction"
           />

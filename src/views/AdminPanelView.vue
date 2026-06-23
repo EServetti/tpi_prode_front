@@ -34,14 +34,6 @@ const onSelectFecha = (fecha: string) => {
   selectedFecha.value = fecha
 }
 
-const onGameSubmit = (_payload: {
-  gameId: string
-  golesLocal: number
-  golesVisitante: number
-  fechaInicio: string
-}) => {
-  // TODO: PUT /partidos/{id} con { fechaId, fechaInicio, golesLocal, golesVisitante }
-}
 </script>
 
 <template>
@@ -167,7 +159,6 @@ const onGameSubmit = (_payload: {
           v-for="game in filteredGames"
           :key="game.id"
           :game="game"
-          @submit="onGameSubmit"
         />
       </ul>
     </section>
